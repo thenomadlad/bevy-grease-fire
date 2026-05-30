@@ -1,10 +1,15 @@
 use avian2d::prelude::*;
 use bevy::prelude::*;
+use rand::Rng;
 
-use crate::{
-    AppSystems, PausableSystems,
-    gameplay::{movement::MovementController, water_spray::spawn_water_bubble},
-};
+use crate::{AppSystems, PausableSystems, gameplay::water_spray::spawn_water_bubble};
+
+const PLAYER_JITTER: f32 = 0.5;
+const MIN_SPEED: f32 = 80.0;
+const MAX_SPEED: f32 = 600.0;
+const IDLE_RECOIL_FACTOR: f32 = 0.25;
+// speed doubles roughly every 0.35s; reaches MAX_SPEED in ~1s
+const SPEED_GROWTH_RATE: f32 = 2.0;
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Default, States)]
 enum PlayerFirehoseState {
@@ -49,15 +54,21 @@ pub fn player(pos: Vec2) -> impl Bundle {
         RigidBody::Dynamic,
         Collider::rectangle(24.0, 24.0),
         LockedAxes::ROTATION_LOCKED,
-        MovementController::default(),
     )
 }
 
 fn record_player_directional_input(
     input: Res<ButtonInput<KeyCode>>,
     firehose_state: Res<State<PlayerFirehoseState>>,
-    mut controller_query: Single<&mut MovementController, With<Player>>,
+    player_velocity: Single<&mut LinearVelocity, With<Player>>,
+    mut last_hose_dir: Local<Vec2>,
+    mut hold_secs: Local<f32>,
+    time: Res<Time>,
 ) {
+    if last_hose_dir.length_squared() == 0.0 {
+        *last_hose_dir = Vec2::Y;
+    }
+
     let mut intent = Vec2::ZERO;
     if input.pressed(KeyCode::KeyW) || input.pressed(KeyCode::ArrowUp) {
         intent.y += 1.0;
@@ -71,26 +82,33 @@ fn record_player_directional_input(
     if input.pressed(KeyCode::KeyD) || input.pressed(KeyCode::ArrowRight) {
         intent.x += 1.0;
     }
-
     let intent = intent.normalize_or_zero();
 
     if intent.length_squared() > 0.0 {
-        // player moves backwards while water is sprayed
-        controller_query.player_direction = intent
-            * match firehose_state.get() {
-                PlayerFirehoseState::Closed => 1.0,
-                PlayerFirehoseState::Open => -1.0,
-            };
-
-        controller_query.hose_direction = intent;
+        *hold_secs += time.delta_secs();
     } else {
-        // player gets kickback of water spray
-        controller_query.player_direction = intent
-            * match firehose_state.get() {
-                PlayerFirehoseState::Closed => 1.0,
-                PlayerFirehoseState::Open => -1.0,
-            };
+        *hold_secs = 0.0;
     }
+
+    let speed = (MIN_SPEED * (*hold_secs * SPEED_GROWTH_RATE).exp()).min(MAX_SPEED);
+
+    let new_velocity = match firehose_state.get() {
+        PlayerFirehoseState::Closed => intent * speed,
+        PlayerFirehoseState::Open => {
+            let jitter = rand::rng().random_range(-PLAYER_JITTER..PLAYER_JITTER);
+            if intent.length_squared() > 0.0 {
+                *last_hose_dir = intent;
+                Vec2::from_angle((-intent).to_angle() + jitter) * speed
+            } else {
+                Vec2::from_angle((-*last_hose_dir).to_angle() + jitter)
+                    * MAX_SPEED
+                    * IDLE_RECOIL_FACTOR
+            }
+        }
+    };
+
+    let mut velocity = player_velocity.into_inner();
+    *velocity = LinearVelocity(new_velocity);
 }
 
 fn handle_firehose_state(
@@ -104,10 +122,23 @@ fn handle_firehose_state(
 
 fn spray_water(
     commands: Commands,
-    items: Single<(&MovementController, &Transform), With<Player>>,
+    player: Single<(&Transform, &LinearVelocity), With<Player>>,
+    mut last_hose_dir: Local<Vec2>,
     mut spray_timer: Local<Option<Timer>>,
     time: Res<Time>,
 ) {
+    if last_hose_dir.length_squared() == 0.0 {
+        *last_hose_dir = Vec2::Y;
+    }
+
+    let (pos, velocity) = player.into_inner();
+
+    // When velocity exceeds idle recoil magnitude, the player is pressing keys.
+    // Water sprays opposite to their kickback direction.
+    if velocity.0.length() > MAX_SPEED * IDLE_RECOIL_FACTOR * 1.5 {
+        *last_hose_dir = (-velocity.0).normalize();
+    }
+
     let timer =
         spray_timer.get_or_insert_with(|| Timer::from_seconds(1.0 / 40.0, TimerMode::Repeating));
     timer.tick(time.delta());
@@ -115,11 +146,7 @@ fn spray_water(
         return;
     }
 
-    let (movement, pos) = items.into_inner();
-    let spray_direction = movement.hose_direction;
-    let velocity = LinearVelocity(spray_direction);
     let mut spawn_transform = *pos;
-
-    spawn_transform.translation += spray_direction.extend(0.0) * 20.0;
-    spawn_water_bubble(commands, spawn_transform, velocity);
+    spawn_transform.translation += last_hose_dir.extend(0.0) * 40.0;
+    spawn_water_bubble(commands, spawn_transform, LinearVelocity(*last_hose_dir));
 }

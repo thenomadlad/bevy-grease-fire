@@ -64,9 +64,10 @@ impl Plugin for AppPlugin {
         app.configure_sets(
             Update,
             (
-                AppSystems::TickTimers,
+                AppSystems::Computations,
                 AppSystems::RecordInput,
                 AppSystems::Update,
+                AppSystems::Cleanups,
             )
                 .chain(),
         );
@@ -86,11 +87,13 @@ impl Plugin for AppPlugin {
 #[derive(SystemSet, Debug, Clone, Copy, Eq, PartialEq, Hash, PartialOrd, Ord)]
 enum AppSystems {
     /// Tick timers.
-    TickTimers,
+    Computations,
     /// Record player input.
     RecordInput,
     /// Do everything else (consider splitting this into further variants).
     Update,
+    /// Post-update cleanups
+    Cleanups,
 }
 
 /// Whether or not the game is paused.

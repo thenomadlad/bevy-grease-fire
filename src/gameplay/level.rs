@@ -4,6 +4,8 @@ use crate::{
     asset_tracking::LoadResource,
     audio::music,
     gameplay::{
+        HealthText, ScoreText,
+        fire::spawn_fire,
         objects::{
             chair, fridge, kitchen_counter, room_floor, stove, table, wall_east, wall_north,
             wall_south, wall_west,
@@ -54,5 +56,43 @@ pub fn spawn_level(mut commands: Commands, level_assets: Res<LevelAssets>) {
             chair(Vec2::new(100.0, -90.0)),
             player(Vec2::new(0.0, -170.0)),
         ],
+    ));
+
+    commands.spawn(spawn_fire(Vec2::new(-220.0, 215.0)));
+
+    commands.spawn((
+        Name::new("Score HUD"),
+        Node {
+            position_type: PositionType::Absolute,
+            top: Val::Px(12.0),
+            left: Val::Px(16.0),
+            ..default()
+        },
+        DespawnOnExit(Screen::Gameplay),
+        children![(
+            Name::new("Score Text"),
+            ScoreText,
+            Text("Score: 0".to_string()),
+            TextFont::from_font_size(24.0),
+            TextColor(Color::WHITE),
+        )],
+    ));
+
+    commands.spawn((
+        Name::new("Health HUD"),
+        Node {
+            position_type: PositionType::Absolute,
+            top: Val::Px(12.0),
+            right: Val::Px(16.0),
+            ..default()
+        },
+        DespawnOnExit(Screen::Gameplay),
+        children![(
+            Name::new("Health Text"),
+            HealthText,
+            Text("♥♥♥♥♥".to_string()),
+            TextFont::from_font_size(24.0),
+            TextColor(Color::srgb(1.0, 0.2, 0.2)),
+        )],
     ));
 }

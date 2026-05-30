@@ -1,18 +1,18 @@
-use std::collections::HashSet;
-
 use avian2d::prelude::*;
 use bevy::prelude::*;
+use rand::Rng;
 
-use crate::{AppSystems, PausableSystems, gameplay::player::Player, screens::Screen};
+use crate::{AppSystems, PausableSystems, screens::Screen};
 
 const SPRAY_SPEED: f32 = 350.0;
+const WATER_BUBBLE_JITTER: f32 = 0.5;
 
 pub(super) fn plugin(app: &mut App) {
     app.register_type::<WaterBubble>();
     app.add_systems(
         Update,
-        (tick_bubble_lifetime, despawn_bubble_on_collision)
-            .in_set(AppSystems::Update)
+        tick_bubble_lifetime
+            .in_set(AppSystems::Computations)
             .in_set(PausableSystems),
     );
 }
@@ -32,6 +32,9 @@ impl Default for WaterBubble {
 }
 
 pub fn spawn_water_bubble(mut commands: Commands, pos: Transform, direction: LinearVelocity) {
+    let jitter = rand::rng().random_range(-WATER_BUBBLE_JITTER..WATER_BUBBLE_JITTER);
+    let new_direction = Vec2::from_angle(direction.0.to_angle() + jitter) * SPRAY_SPEED;
+
     commands.spawn((
         WaterBubble::default(),
         Sprite {
@@ -43,7 +46,7 @@ pub fn spawn_water_bubble(mut commands: Commands, pos: Transform, direction: Lin
         RigidBody::Dynamic,
         Collider::circle(6.0),
         CollisionEventsEnabled,
-        LinearVelocity(direction.0.normalize_or_zero() * SPRAY_SPEED),
+        LinearVelocity(new_direction),
         DespawnOnExit(Screen::Gameplay),
     ));
 }
@@ -59,33 +62,6 @@ fn tick_bubble_lifetime(
             if let Ok(mut entity) = commands.get_entity(e) {
                 entity.despawn();
             }
-        }
-    }
-}
-
-fn despawn_bubble_on_collision(
-    mut commands: Commands,
-    mut collision_reader: MessageReader<CollisionStart>,
-    bubble_query: Query<(), With<WaterBubble>>,
-    player_query: Query<(), With<Player>>,
-) {
-    let mut to_despawn: HashSet<Entity> = HashSet::new();
-    for event in collision_reader.read() {
-        for (bubble_e, other_e) in [
-            (event.collider1, event.collider2),
-            (event.collider2, event.collider1),
-        ] {
-            if bubble_query.contains(bubble_e)
-                && !player_query.contains(other_e)
-                && !bubble_query.contains(other_e)
-            {
-                to_despawn.insert(bubble_e);
-            }
-        }
-    }
-    for e in to_despawn {
-        if let Ok(mut entity) = commands.get_entity(e) {
-            entity.despawn();
         }
     }
 }

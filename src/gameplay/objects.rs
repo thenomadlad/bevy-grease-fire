@@ -16,10 +16,17 @@ macro_rules! components {
     };
 }
 
-components!(Knockable, Stove, KitchenCounter, Fridge, Table, Chair);
+components!(Knocked, Stove, KitchenCounter, Fridge, Table, Chair);
+
+pub const MAX_KNOCKABLE_HEALTH: u32 = 300;
+
+#[derive(Component, Debug, Clone, Copy, Reflect)]
+#[reflect(Component)]
+pub struct Knockable(pub u32);
 
 pub(super) fn plugin(app: &mut App) {
-    app.register_type::<Knockable>()
+    app.register_type::<Knocked>()
+        .register_type::<Knockable>()
         .register_type::<Stove>()
         .register_type::<KitchenCounter>()
         .register_type::<Fridge>()
@@ -130,7 +137,7 @@ pub fn table(pos: Vec2) -> impl Bundle {
     (
         Name::new("Table"),
         Table,
-        Knockable,
+        Knockable(MAX_KNOCKABLE_HEALTH),
         Sprite {
             color: Color::srgb(0.45, 0.28, 0.12),
             custom_size: Some(Vec2::new(120.0, 80.0)),
@@ -138,6 +145,7 @@ pub fn table(pos: Vec2) -> impl Bundle {
         },
         Transform::from_translation(pos.extend(1.0)),
         RigidBody::Dynamic,
+        CollisionEventsEnabled,
         Collider::rectangle(120.0, 80.0),
         LockedAxes::ROTATION_LOCKED,
         LinearDamping(5.0),
@@ -148,7 +156,7 @@ pub fn chair(pos: Vec2) -> impl Bundle {
     (
         Name::new("Chair"),
         Chair,
-        Knockable,
+        Knockable(MAX_KNOCKABLE_HEALTH),
         Sprite {
             color: Color::srgb(0.32, 0.20, 0.08),
             custom_size: Some(Vec2::new(36.0, 36.0)),
@@ -156,6 +164,7 @@ pub fn chair(pos: Vec2) -> impl Bundle {
         },
         Transform::from_translation(pos.extend(1.0)),
         RigidBody::Dynamic,
+        CollisionEventsEnabled,
         Collider::rectangle(36.0, 36.0),
         LockedAxes::ROTATION_LOCKED,
         LinearDamping(5.0),
