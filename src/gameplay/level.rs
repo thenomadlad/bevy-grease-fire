@@ -42,7 +42,10 @@ pub fn spawn_level(mut commands: Commands, level_assets: Res<LevelAssets>) {
         Visibility::default(),
         DespawnOnExit(Screen::Gameplay),
         children![
-            (Name::new("Gameplay Music"), music(level_assets.music.clone())),
+            (
+                Name::new("Gameplay Music"),
+                music(level_assets.music.clone())
+            ),
             room_floor(),
             wall_north(),
             wall_south(),

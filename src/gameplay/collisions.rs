@@ -29,7 +29,10 @@ struct BurnDamageTimer(Timer);
 
 impl Default for BurnDamageTimer {
     fn default() -> Self {
-        Self(Timer::from_seconds(BURN_DAMAGE_INTERVAL_SECS, TimerMode::Repeating))
+        Self(Timer::from_seconds(
+            BURN_DAMAGE_INTERVAL_SECS,
+            TimerMode::Repeating,
+        ))
     }
 }
 
@@ -76,7 +79,10 @@ fn handle_collisions(
             if is_lhs_bubble {
                 to_despawn.insert(lhs);
                 if is_rhs_fire {
-                    info!("collision: bubble {:?} hit fire {:?} -> extinguished", lhs, rhs);
+                    info!(
+                        "collision: bubble {:?} hit fire {:?} -> extinguished",
+                        lhs, rhs
+                    );
                     to_despawn.insert(rhs);
                     score.0 += 1;
                 }
@@ -103,24 +109,33 @@ fn handle_collisions(
         };
 
         let was_alive = knockable.0 > 0;
-        let damage = if is_player { PLAYER_KNOCKABLE_DAMAGE } else { BUBBLE_KNOCKABLE_DAMAGE };
+        let damage = if is_player {
+            PLAYER_KNOCKABLE_DAMAGE
+        } else {
+            BUBBLE_KNOCKABLE_DAMAGE
+        };
         knockable.0 = knockable.0.saturating_sub(damage);
 
         let fire_p = 1.0 - knockable.0 as f64 / MAX_KNOCKABLE_HEALTH as f64;
         let just_died = was_alive && knockable.0 == 0;
         let pos = transform.translation.truncate();
 
-        info!("knockable {:?} hit, health {}/{MAX_KNOCKABLE_HEALTH}, fire_p={fire_p:.2}", knockable_e, knockable.0);
+        info!(
+            "knockable {:?} hit, health {}/{MAX_KNOCKABLE_HEALTH}, fire_p={fire_p:.2}",
+            knockable_e, knockable.0
+        );
 
         let mut rng = rand::rng();
         if just_died {
             info!("knockable {:?} destroyed -> chaos burst", knockable_e);
             for _ in 0..6 {
-                let offset = Vec2::from_angle(rng.random_range(0.0..std::f32::consts::TAU)) * FIRE_SPAWN_DIST;
+                let offset = Vec2::from_angle(rng.random_range(0.0..std::f32::consts::TAU))
+                    * FIRE_SPAWN_DIST;
                 commands.spawn(spawn_fire(pos + offset));
             }
         } else if rng.random_bool(fire_p) {
-            let offset = Vec2::from_angle(rng.random_range(0.0..std::f32::consts::TAU)) * FIRE_SPAWN_DIST;
+            let offset =
+                Vec2::from_angle(rng.random_range(0.0..std::f32::consts::TAU)) * FIRE_SPAWN_DIST;
             let spawn_pos = pos + offset;
             info!("fire spawned at ({:.1}, {:.1})", spawn_pos.x, spawn_pos.y);
             commands.spawn(spawn_fire(spawn_pos));
