@@ -57,12 +57,12 @@ fn handle_collisions(
     bubble_query: Query<(), With<WaterBubble>>,
     fire_query: Query<(), With<Fire>>,
     player: Single<Entity, With<Player>>,
-    knockable_query: Query<(), (With<Knockable>, Without<Knocked>)>,
-    knockable_transform: Query<&Transform, With<Knockable>>,
+    mut knockable_query: Query<(&mut Knockable, &Transform), Without<Knocked>>,
     mut score: ResMut<Score>,
     mut burn_contacts: ResMut<BurnContacts>,
 ) {
     let mut to_despawn: HashSet<Entity> = HashSet::new();
+    let mut knockable_hits: Vec<(Entity, bool)> = Vec::new();
 
     for event in collision_reader.read() {
         for (lhs, rhs) in [
@@ -72,46 +72,56 @@ fn handle_collisions(
             let is_lhs_bubble = bubble_query.contains(lhs);
             let is_lhs_player = *player == lhs;
             let is_rhs_fire = fire_query.contains(rhs);
-            let is_rhs_knockable = knockable_query.contains(rhs);
 
             if is_lhs_bubble {
                 to_despawn.insert(lhs);
-
                 if is_rhs_fire {
-                    info!("collision: bubble {:?} hit fire {:?} → extinguished", lhs, rhs);
+                    info!("collision: bubble {:?} hit fire {:?} -> extinguished", lhs, rhs);
                     to_despawn.insert(rhs);
                     score.0 += 1;
                 }
             }
 
             if is_lhs_player && is_rhs_fire {
-                info!("collision: player hit fire {:?} → burn started", rhs);
+                info!("collision: player hit fire {:?} -> burn started", rhs);
                 burn_contacts.0.insert(rhs);
             }
 
-            if is_rhs_knockable {
-                if let Ok(transform) = knockable_transform.get(rhs) {
-                    if is_lhs_player {
-                        info!("collision: player hit knockable {:?} → rolling fire spawn (p={PLAYER_KNOCKED_FIRE_HAZARD_RATE})", rhs);
-                        knocked_off_fire(
-                            PLAYER_KNOCKED_FIRE_HAZARD_RATE,
-                            3,
-                            transform,
-                            &mut commands,
-                        );
-                    } else if is_lhs_bubble {
-                        info!("collision: bubble hit knockable {:?} → rolling fire spawn (p={BUBBLE_KNOCKED_FIRE_HAZARD_RATE})", rhs);
-                        knocked_off_fire(
-                            BUBBLE_KNOCKED_FIRE_HAZARD_RATE,
-                            1,
-                            transform,
-                            &mut commands,
-                        );
-                    }
-                }
-
-                commands.entity(rhs).remove::<Knockable>().insert(Knocked);
+            if is_lhs_player || is_lhs_bubble {
+                knockable_hits.push((rhs, is_lhs_player));
             }
+        }
+    }
+
+    let mut processed: HashSet<Entity> = HashSet::new();
+    for (knockable_e, is_player) in knockable_hits {
+        if !processed.insert(knockable_e) {
+            continue;
+        }
+        let Ok((mut knockable, transform)) = knockable_query.get_mut(knockable_e) else {
+            continue;
+        };
+
+        let damage = if is_player { PLAYER_KNOCKABLE_DAMAGE } else { BUBBLE_KNOCKABLE_DAMAGE };
+        knockable.0 = knockable.0.saturating_sub(damage);
+
+        let fire_p = 1.0 - knockable.0 as f64 / MAX_KNOCKABLE_HEALTH as f64;
+        let is_dead = knockable.0 == 0;
+        let pos = transform.translation.truncate();
+
+        info!("knockable {:?} hit, health {}/{MAX_KNOCKABLE_HEALTH}, fire_p={fire_p:.2}", knockable_e, knockable.0);
+
+        let mut rng = rand::rng();
+        if rng.random_bool(fire_p) {
+            let offset = Vec2::from_angle(rng.random_range(0.0..std::f32::consts::TAU)) * FIRE_SPAWN_DIST;
+            let spawn_pos = pos + offset;
+            info!("fire spawned at ({:.1}, {:.1})", spawn_pos.x, spawn_pos.y);
+            commands.spawn(spawn_fire(spawn_pos));
+        }
+
+        if is_dead {
+            info!("knockable {:?} destroyed -> Knocked", knockable_e);
+            commands.entity(knockable_e).remove::<Knockable>().insert(Knocked);
         }
     }
 
@@ -157,22 +167,5 @@ fn apply_burn_damage(
     timer.0.tick(time.delta());
     if timer.0.just_finished() {
         health.0 = health.0.saturating_sub(1);
-    }
-}
-
-fn knocked_off_fire(p: f64, num_fires: u32, transform: &Transform, commands: &mut Commands) {
-    let translation = transform.translation.truncate();
-
-    for _ in 0..num_fires {
-        let mut rng = rand::rng();
-        if rng.random_bool(p) {
-            let offset =
-                Vec2::from_angle(rng.random_range(0.0..std::f32::consts::TAU)) * FIRE_SPAWN_DIST;
-            let pos = translation + offset;
-            info!("fire spawned at ({:.1}, {:.1})", pos.x, pos.y);
-            commands.spawn(spawn_fire(pos));
-        } else {
-            info!("fire spawn rolled miss (p={p})");
-        }
     }
 }
