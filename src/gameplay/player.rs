@@ -2,14 +2,13 @@ use avian2d::prelude::*;
 use bevy::prelude::*;
 use rand::Rng;
 
-use crate::{AppSystems, PausableSystems, gameplay::water_spray::spawn_water_bubble};
+use crate::{AppSystems, PausableSystems, gameplay::{GameLayer, water_spray::spawn_water_bubble}};
 
 const PLAYER_JITTER: f32 = 0.5;
-const MIN_SPEED: f32 = 80.0;
 const MAX_SPEED: f32 = 600.0;
+const ACCELERATION: f32 = 4800.0;
+const DAMPING: f32 = 8.0;
 const IDLE_RECOIL_FACTOR: f32 = 0.25;
-// speed doubles roughly every 0.35s; reaches MAX_SPEED in ~1s
-const SPEED_GROWTH_RATE: f32 = 2.0;
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Default, States)]
 pub(crate) enum PlayerFirehoseState {
@@ -54,6 +53,8 @@ pub fn player(pos: Vec2) -> impl Bundle {
         RigidBody::Dynamic,
         Collider::rectangle(24.0, 24.0),
         LockedAxes::ROTATION_LOCKED,
+        LinearDamping(DAMPING),
+        CollisionLayers::new(GameLayer::Player, [GameLayer::Default]),
     )
 }
 
@@ -62,7 +63,6 @@ fn record_player_directional_input(
     firehose_state: Res<State<PlayerFirehoseState>>,
     player_velocity: Single<&mut LinearVelocity, With<Player>>,
     mut last_hose_dir: Local<Vec2>,
-    mut hold_secs: Local<f32>,
     time: Res<Time>,
 ) {
     if last_hose_dir.length_squared() == 0.0 {
@@ -84,31 +84,22 @@ fn record_player_directional_input(
     }
     let intent = intent.normalize_or_zero();
 
-    if intent.length_squared() > 0.0 {
-        *hold_secs += time.delta_secs();
-    } else {
-        *hold_secs = 0.0;
-    }
-
-    let speed = (MIN_SPEED * (*hold_secs * SPEED_GROWTH_RATE).exp()).min(MAX_SPEED);
-
-    let new_velocity = match firehose_state.get() {
-        PlayerFirehoseState::Closed => intent * speed,
+    let accel_dir = match firehose_state.get() {
+        PlayerFirehoseState::Closed => intent,
         PlayerFirehoseState::Open => {
             let jitter = rand::rng().random_range(-PLAYER_JITTER..PLAYER_JITTER);
             if intent.length_squared() > 0.0 {
                 *last_hose_dir = intent;
-                Vec2::from_angle((-intent).to_angle() + jitter) * speed
+                Vec2::from_angle((-intent).to_angle() + jitter)
             } else {
-                Vec2::from_angle((-*last_hose_dir).to_angle() + jitter)
-                    * MAX_SPEED
-                    * IDLE_RECOIL_FACTOR
+                Vec2::from_angle((-*last_hose_dir).to_angle() + jitter) * IDLE_RECOIL_FACTOR
             }
         }
     };
 
     let mut velocity = player_velocity.into_inner();
-    *velocity = LinearVelocity(new_velocity);
+    velocity.0 += accel_dir * ACCELERATION * time.delta_secs();
+    velocity.0 = velocity.0.clamp_length_max(MAX_SPEED);
 }
 
 fn handle_firehose_state(

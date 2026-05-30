@@ -2,7 +2,7 @@ use avian2d::prelude::*;
 use bevy::prelude::*;
 use rand::Rng;
 
-use crate::{AppSystems, PausableSystems, screens::Screen};
+use crate::{AppSystems, PausableSystems, gameplay::GameLayer, screens::Screen};
 
 const SPRAY_SPEED: f32 = 350.0;
 const WATER_BUBBLE_JITTER: f32 = 0.5;
@@ -46,6 +46,7 @@ pub fn spawn_water_bubble(mut commands: Commands, pos: Transform, direction: Lin
         RigidBody::Dynamic,
         Collider::circle(6.0),
         CollisionEventsEnabled,
+        CollisionLayers::new(GameLayer::Bubble, [GameLayer::Default]),
         LinearVelocity(new_direction),
         DespawnOnExit(Screen::Gameplay),
     ));

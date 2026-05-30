@@ -1,3 +1,4 @@
+use avian2d::prelude::PhysicsLayer;
 use bevy::prelude::*;
 
 use crate::{AppSystems, screens::Screen};
@@ -9,6 +10,14 @@ pub mod level;
 mod objects;
 mod player;
 mod water_spray;
+
+#[derive(PhysicsLayer, Clone, Copy, Debug, Default)]
+pub(super) enum GameLayer {
+    #[default]
+    Default,
+    Player,
+    Bubble,
+}
 
 pub const DEFAULT_HEALTH: usize = 10;
 
