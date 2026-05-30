@@ -59,8 +59,9 @@ fn tick_bubble_lifetime(
     for (e, mut bubble) in query.iter_mut() {
         bubble.lifetime.tick(time.delta());
         if bubble.lifetime.is_finished()
-            && let Ok(mut entity) = commands.get_entity(e) {
-                entity.despawn();
-            }
+            && let Ok(mut entity) = commands.get_entity(e)
+        {
+            entity.despawn();
+        }
     }
 }
