@@ -12,7 +12,7 @@ const IDLE_RECOIL_FACTOR: f32 = 0.25;
 const SPEED_GROWTH_RATE: f32 = 2.0;
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Default, States)]
-enum PlayerFirehoseState {
+pub(crate) enum PlayerFirehoseState {
     #[default]
     Closed,
     Open,

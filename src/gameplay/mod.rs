@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 
 use crate::{AppSystems, screens::Screen};
+use player::PlayerFirehoseState;
 
 mod collisions;
 mod fire;
@@ -25,7 +26,11 @@ pub(super) fn plugin(app: &mut App) {
 
     app.add_systems(
         Update,
-        (update_score_ui, update_health_ui)
+        (
+            update_score_ui,
+            update_health_ui,
+            update_firehose_instruction_ui,
+        )
             .in_set(AppSystems::Update)
             .run_if(in_state(Screen::Gameplay)),
     );
@@ -51,6 +56,9 @@ pub struct ScoreText;
 #[derive(Component)]
 pub struct HealthText;
 
+#[derive(Component)]
+pub struct FirehoseInstructionText;
+
 fn update_score_ui(score: Res<Score>, mut score_text: Single<&mut Text, With<ScoreText>>) {
     if score.is_changed() {
         let Score(score) = *score;
@@ -73,5 +81,17 @@ fn update_health_ui(
             .chain(std::iter::repeat_n("♡", half_hearts))
             .chain(std::iter::repeat_n(" ", empty_hearts))
             .collect::<String>();
+    }
+}
+
+fn update_firehose_instruction_ui(
+    firehose_state: Res<State<PlayerFirehoseState>>,
+    mut text: Single<&mut Text, With<FirehoseInstructionText>>,
+) {
+    if firehose_state.is_changed() {
+        text.0 = match firehose_state.get() {
+            PlayerFirehoseState::Closed => "Space: fire extinguisher".to_string(),
+            PlayerFirehoseState::Open => "Space: fire extinguisher (It's Stuck!!)".to_string(),
+        };
     }
 }

@@ -4,7 +4,7 @@ use crate::{
     asset_tracking::LoadResource,
     audio::music,
     gameplay::{
-        HealthText, ScoreText,
+        FirehoseInstructionText, HealthText, ScoreText,
         fire::spawn_fire,
         objects::{
             chair, fridge, kitchen_counter, room_floor, stove, table, wall_east, wall_north,
@@ -96,6 +96,41 @@ pub fn spawn_level(mut commands: Commands, level_assets: Res<LevelAssets>) {
             Text("♥♥♥♥♥".to_string()),
             TextFont::from_font_size(24.0),
             TextColor(Color::srgb(1.0, 0.2, 0.2)),
+        )],
+    ));
+
+    commands.spawn((
+        Name::new("Move Instructions"),
+        Node {
+            position_type: PositionType::Absolute,
+            bottom: Val::Px(12.0),
+            left: Val::Px(16.0),
+            ..default()
+        },
+        DespawnOnExit(Screen::Gameplay),
+        children![(
+            Name::new("Move Instructions Text"),
+            Text("WASD / Arrows to move".to_string()),
+            TextFont::from_font_size(16.0),
+            TextColor(Color::srgb(0.8, 0.8, 0.8)),
+        )],
+    ));
+
+    commands.spawn((
+        Name::new("Firehose Instructions"),
+        Node {
+            position_type: PositionType::Absolute,
+            bottom: Val::Px(12.0),
+            right: Val::Px(16.0),
+            ..default()
+        },
+        DespawnOnExit(Screen::Gameplay),
+        children![(
+            Name::new("Firehose Instructions Text"),
+            FirehoseInstructionText,
+            Text("Space: fire extinguisher".to_string()),
+            TextFont::from_font_size(16.0),
+            TextColor(Color::srgb(0.8, 0.8, 0.8)),
         )],
     ));
 }
