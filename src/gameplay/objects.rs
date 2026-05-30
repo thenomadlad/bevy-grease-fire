@@ -16,7 +16,7 @@ macro_rules! components {
     };
 }
 
-components!(Knocked, Stove, KitchenCounter, Fridge, Table, Chair);
+components!(Stove, KitchenCounter, Fridge, Table, Chair);
 
 pub const MAX_KNOCKABLE_HEALTH: u32 = 300;
 
@@ -25,8 +25,7 @@ pub const MAX_KNOCKABLE_HEALTH: u32 = 300;
 pub struct Knockable(pub u32);
 
 pub(super) fn plugin(app: &mut App) {
-    app.register_type::<Knocked>()
-        .register_type::<Knockable>()
+    app.register_type::<Knockable>()
         .register_type::<Stove>()
         .register_type::<KitchenCounter>()
         .register_type::<Fridge>()

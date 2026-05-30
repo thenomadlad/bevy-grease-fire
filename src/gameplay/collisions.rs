@@ -14,7 +14,7 @@ use crate::{
     gameplay::{
         PlayerHealth, Score,
         fire::{Fire, spawn_fire},
-        objects::{Knockable, Knocked, MAX_KNOCKABLE_HEALTH},
+        objects::{Knockable, MAX_KNOCKABLE_HEALTH},
         player::Player,
         water_spray::WaterBubble,
     },
@@ -57,7 +57,7 @@ fn handle_collisions(
     bubble_query: Query<(), With<WaterBubble>>,
     fire_query: Query<(), With<Fire>>,
     player: Single<Entity, With<Player>>,
-    mut knockable_query: Query<(&mut Knockable, &Transform), Without<Knocked>>,
+    mut knockable_query: Query<(&mut Knockable, &Transform)>,
     mut score: ResMut<Score>,
     mut burn_contacts: ResMut<BurnContacts>,
 ) {
@@ -102,26 +102,28 @@ fn handle_collisions(
             continue;
         };
 
+        let was_alive = knockable.0 > 0;
         let damage = if is_player { PLAYER_KNOCKABLE_DAMAGE } else { BUBBLE_KNOCKABLE_DAMAGE };
         knockable.0 = knockable.0.saturating_sub(damage);
 
         let fire_p = 1.0 - knockable.0 as f64 / MAX_KNOCKABLE_HEALTH as f64;
-        let is_dead = knockable.0 == 0;
+        let just_died = was_alive && knockable.0 == 0;
         let pos = transform.translation.truncate();
 
         info!("knockable {:?} hit, health {}/{MAX_KNOCKABLE_HEALTH}, fire_p={fire_p:.2}", knockable_e, knockable.0);
 
         let mut rng = rand::rng();
-        if rng.random_bool(fire_p) {
+        if just_died {
+            info!("knockable {:?} destroyed -> chaos burst", knockable_e);
+            for _ in 0..6 {
+                let offset = Vec2::from_angle(rng.random_range(0.0..std::f32::consts::TAU)) * FIRE_SPAWN_DIST;
+                commands.spawn(spawn_fire(pos + offset));
+            }
+        } else if rng.random_bool(fire_p) {
             let offset = Vec2::from_angle(rng.random_range(0.0..std::f32::consts::TAU)) * FIRE_SPAWN_DIST;
             let spawn_pos = pos + offset;
             info!("fire spawned at ({:.1}, {:.1})", spawn_pos.x, spawn_pos.y);
             commands.spawn(spawn_fire(spawn_pos));
-        }
-
-        if is_dead {
-            info!("knockable {:?} destroyed -> Knocked", knockable_e);
-            commands.entity(knockable_e).remove::<Knockable>().insert(Knocked);
         }
     }
 
