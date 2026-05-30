@@ -1,4 +1,3 @@
-use std::iter::repeat;
 
 use bevy::prelude::*;
 
@@ -71,10 +70,9 @@ fn update_health_ui(
         let half_hearts = if health % 5 > 0 { 1 } else { 0 };
         let empty_hearts = 5 - whole_hearts - half_hearts;
 
-        health_text.0 = repeat("♥")
-            .take(whole_hearts)
-            .chain(repeat("♡").take(half_hearts))
-            .chain(repeat(" ").take(empty_hearts))
+        health_text.0 = std::iter::repeat_n("♥", whole_hearts)
+            .chain(std::iter::repeat_n("♡", half_hearts))
+            .chain(std::iter::repeat_n(" ", empty_hearts))
             .collect::<String>();
     }
 }
