@@ -16,6 +16,8 @@ tracing = { version = "0.1", features = [
     "max_level_debug",
     "release_max_level_warn",
 ] }
+noise = "0.9.0"
+grid = "1.0.1"
 
 [target.wasm32-unknown-unknown.dependencies]
 getrandom = { version = "0.3", features = ["wasm_js"] }
@@ -78,6 +80,10 @@ nonstandard_macro_braces = "warn"
 # Enable a small amount of optimization in the dev profile.
 [profile.dev]
 opt-level = 1
+# Line tables only — enough for panic traces, much smaller .rlib files.
+debug = 1
+# Skip the slow dsymutil bundling step on macOS; keep debug info in .o files.
+split-debuginfo = "unpacked"
 
 # Enable a large amount of optimization in the dev profile for dependencies.
 [profile.dev.package."*"]

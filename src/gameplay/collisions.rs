@@ -13,7 +13,7 @@ use crate::{
     AppSystems,
     gameplay::{
         PlayerHealth, Score,
-        fire::{Fire, spawn_fire},
+        fire::{Fire, FireAssets, spawn_fire},
         objects::{Knockable, MAX_KNOCKABLE_HEALTH},
         player::Player,
         water_spray::WaterBubble,
@@ -63,6 +63,7 @@ fn handle_collisions(
     mut knockable_query: Query<(&mut Knockable, &Transform)>,
     mut score: ResMut<Score>,
     mut burn_contacts: ResMut<BurnContacts>,
+    fire_assets: Res<FireAssets>,
 ) {
     let mut to_despawn: HashSet<Entity> = HashSet::new();
     let mut knockable_hits: Vec<(Entity, bool)> = Vec::new();
@@ -131,14 +132,14 @@ fn handle_collisions(
             for _ in 0..6 {
                 let offset = Vec2::from_angle(rng.random_range(0.0..std::f32::consts::TAU))
                     * FIRE_SPAWN_DIST;
-                commands.spawn(spawn_fire(pos + offset));
+                commands.spawn(spawn_fire(pos + offset, &fire_assets));
             }
         } else if rng.random_bool(fire_p) {
             let offset =
                 Vec2::from_angle(rng.random_range(0.0..std::f32::consts::TAU)) * FIRE_SPAWN_DIST;
             let spawn_pos = pos + offset;
             info!("fire spawned at ({:.1}, {:.1})", spawn_pos.x, spawn_pos.y);
-            commands.spawn(spawn_fire(spawn_pos));
+            commands.spawn(spawn_fire(spawn_pos, &fire_assets));
         }
     }
 

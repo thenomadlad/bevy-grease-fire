@@ -9,6 +9,7 @@ mod fire;
 pub mod level;
 mod objects;
 mod player;
+mod procgen;
 mod water_spray;
 
 #[derive(PhysicsLayer, Clone, Copy, Debug, Default)]
@@ -25,6 +26,7 @@ pub(super) fn plugin(app: &mut App) {
     app.add_plugins((
         level::plugin,
         objects::plugin,
+        fire::plugin,
         player::plugin,
         water_spray::plugin,
         collisions::plugin,

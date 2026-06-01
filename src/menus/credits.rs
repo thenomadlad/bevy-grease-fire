@@ -42,6 +42,14 @@ fn assets() -> impl Bundle {
             "Bevy logo",
             "All rights reserved by the Bevy Foundation, permission granted for splash screen use when unmodified",
         ],
+        [
+            "Furniture sprites",
+            "Roguelike Indoor Pack — CC0 by Kenney Vleugels (kenney.nl)",
+        ],
+        [
+            "Character sprites",
+            "Liberated Pixel Cup — CC-BY-SA 4.0. Contributors: wulax, bigbeargames, makrohn, Nila122, JaidynReiman, Nemisys, pennomi, laetissima, bluecarrot16, Luke Mehl, BenCreating, Redshrike, Sharm, MrBeast, daneeklu, & many others. See opengameart.org",
+        ],
     ])
 }
 
@@ -52,7 +60,7 @@ fn grid(content: Vec<[&'static str; 2]>) -> impl Bundle {
             display: Display::Grid,
             row_gap: px(10),
             column_gap: px(30),
-            grid_template_columns: RepeatedGridTrack::px(2, 400.0),
+            grid_template_columns: vec![GridTrack::px(220.0), GridTrack::px(580.0)],
             ..default()
         },
         Children::spawn(SpawnIter(content.into_iter().flatten().enumerate().map(
